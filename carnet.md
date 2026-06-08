@@ -3,10 +3,13 @@
 Ce carnet te guide de zéro à une application multi-conteneurs publiée sur un
 registry. Chaque mission introduit une seule notion nouvelle. Tu n'auras jamais
 la commande toute faite : tu auras l'objectif, le nom des outils à utiliser, et
-des indices. À toi d'assembler. Quand tu bloques, deux réflexes :
+des indices. À toi d'assembler. Quand tu bloques, trois réflexes :
 
-1. `docker NOM_DE_COMMANDE --help` t'affiche toutes les options d'une commande.
-2. La documentation officielle (docs.docker.com) est claire et pleine d'exemples.
+1. `memo-commandes.md` (dans ce dépôt) liste toutes les commandes et leurs
+   options. C'est ta boîte à outils : les briques sont là, à toi de choisir
+   lesquelles et avec quelles valeurs.
+2. `docker NOM_DE_COMMANDE --help` t'affiche toutes les options d'une commande.
+3. La documentation officielle (docs.docker.com) est claire et pleine d'exemples.
 
 À la fin de chaque mission, tu lances un script de vérification qui te dit si
 c'est bon. Ne passe à la mission suivante que quand le script est content.

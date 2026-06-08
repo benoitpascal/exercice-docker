@@ -21,6 +21,9 @@ touches pas à son code : tu apprends seulement à la conteneuriser.
 
 - `carnet.md` : ta feuille de route. C'est le document central. Ouvre-le et lis
   la phase 0 en entier avant toute autre chose.
+- `memo-commandes.md` : ta boîte à outils. La liste des commandes Docker et de
+  leurs options, à garder ouverte à côté du carnet. Ce ne sont pas les solutions,
+  ce sont les briques à assembler.
 - `starter-app/` : la petite application web que tu vas faire vivre. Tu copies
   ce dossier dans ton espace de travail et tu travailles dessus.
 - `checks/` : des scripts qui te disent, mission par mission, si tu as atteint
