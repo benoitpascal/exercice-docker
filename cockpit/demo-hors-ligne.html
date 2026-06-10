@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Port des Conteneurs (démo hors-ligne)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea:#0c2233; --sea2:#0f3a52; --steel:#1b2f3f; --steel2:#24435a;
+    --hazard:#f2b705; --signal:#ff6a2b; --foam:#7fd1d6;
+    --ink:#eaf2f5; --muted:#8aa6b5; --green:#39d98a; --red:#ff5c6c;
+    --line:#34536b; --sand:#c8a868; --sand2:#a07f44; --plank:#6b4a2a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:"Barlow Semi Condensed",sans-serif;
+    background:radial-gradient(1200px 500px at 80% -10%, #15405e 0%, transparent 60%),linear-gradient(180deg,#0a1a27,#0c2233);
+    color:var(--ink);min-height:100vh;padding:14px}
+  .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  header.bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border:2px solid var(--line);border-radius:12px;
+    background:linear-gradient(180deg,var(--steel2),var(--steel));padding:12px 16px;position:relative;overflow:hidden}
+  header.bar::after{content:"";position:absolute;inset:auto 0 0 0;height:6px;
+    background:repeating-linear-gradient(45deg,var(--hazard) 0 16px,#111 16px 32px);opacity:.8}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo h1{font-family:"Stardos Stencil",sans-serif;margin:0;font-size:clamp(18px,3vw,28px);letter-spacing:1px;line-height:1;text-shadow:2px 2px 0 #00000055}
+  .logo h1 span{color:var(--hazard)}
+  .logo small{display:block;color:var(--muted);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+  .manifest{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .seg{width:26px;height:10px;border-radius:2px;background:#0e2738;border:1px solid var(--line);transition:.3s}
+  .seg.done{background:var(--green);border-color:var(--green);box-shadow:0 0 8px #39d98a66}
+  .seg.current{background:var(--signal);border-color:var(--signal);box-shadow:0 0 10px #ff6a2b88;animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{opacity:.55}}
+  .manifest b{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-family:"JetBrains Mono",monospace;font-size:12px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.6s infinite}
+  .dot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+  @keyframes blink{50%{opacity:.4}}
+  .alert{border:2px solid var(--red);background:#ff5c6c1a;color:#ffd6da;border-radius:10px;padding:8px 12px;font-size:14px;display:none}
+  .alert.show{display:block}
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:12px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .panel{border:2px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#13283a,#0e2030);overflow:hidden}
+  .panel h2{margin:0;padding:10px 14px;font-family:"Stardos Stencil",sans-serif;font-size:15px;letter-spacing:1px;background:#0c1d2b;border-bottom:2px solid var(--line);color:var(--foam)}
+
+  /* ---------- LA RADE (eau + iles) ---------- */
+  .stage{position:relative;min-height:380px}
+  .harbor{position:relative;min-height:380px;padding:22px 16px 95px;overflow:auto;
+    background:linear-gradient(180deg,#10405c,#0c2a3e);}
+  .harbor::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+    background:radial-gradient(circle at 20% 30%,#2a6a8a55 0 9px,transparent 11px) 0 0/64px 64px;
+    animation:drift 11s linear infinite}
+  @keyframes drift{to{background-position:64px 0}}
+  .islands{position:relative;display:flex;flex-wrap:wrap;gap:36px 30px;align-items:flex-end}
+  .empty{color:#bcd3df;font-style:italic;margin:60px auto;font-family:"JetBrains Mono",monospace;font-size:13px;text-align:center;max-width:80%}
+  .group{position:relative;display:flex;align-items:flex-end;gap:0}
+  .group.district{outline:2px dashed var(--signal);outline-offset:10px;border-radius:14px}
+  .banner{position:absolute;top:-12px;left:12px;font-family:"JetBrains Mono",monospace;font-size:11px;
+    padding:1px 8px;border-radius:6px;background:#0e2030;border:1px solid var(--foam);color:var(--foam);white-space:nowrap;z-index:4}
+  .group.district .banner{border-color:var(--signal);color:var(--signal);font-weight:700}
+  .island{position:relative;display:flex;flex-direction:column;align-items:center;padding:6px 16px 28px;
+    border-radius:12px 12px 22px 22px;background:linear-gradient(180deg,#717983,#565d66);
+    border:2px solid #3f454e;box-shadow:0 12px 0 #00000040,0 18px 24px #00000055}
+  .island::after{content:"";position:absolute;left:-6px;right:-6px;bottom:-8px;height:14px;border-radius:50%;background:#0a2334;filter:blur(2px);opacity:.5}
+  .island.depot{background:linear-gradient(180deg,#54627a,#39465c);border-color:#2b3650}
+  .yard{display:flex;align-items:flex-end;gap:8px}
+  .quaiwrap{position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:1;display:flex;gap:12px}
+  .quaiwrap .pier{height:26px}
+
+  /* ---------- PONT (reseau) ---------- */
+  .bridge{align-self:center;width:40px;height:16px;margin:0 -3px 40px;position:relative;
+    background:repeating-linear-gradient(90deg,var(--plank) 0 6px,#553a20 6px 8px);
+    border-top:3px solid #8a6a3e;border-bottom:3px solid #4a3318}
+  .bridge::before,.bridge::after{content:"";position:absolute;left:0;right:0;height:3px;background:#3a2a17}
+  .bridge::before{top:-7px} .bridge::after{bottom:-7px}
+
+  /* ---------- BATIMENT (service / conteneur docker) ---------- */
+  .plot{display:flex;flex-direction:column;align-items:center;gap:7px}
+    .bld{width:116px;margin-top:-26px;position:relative;display:flex;flex-direction:column;align-items:center;transition:transform .25s}
+  .bld.new{animation:drop .5s cubic-bezier(.2,1.3,.5,1)}
+  @keyframes drop{from{transform:translateY(-220px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .bld .ico{display:block}
+  .bld .ico .wall{fill:#eef2f5;stroke:#c3ccd4;stroke-width:1.5}
+  .bld .ico .roof{fill:#aab4bd}
+  .bld .ico .door{fill:#6b7785}
+  .bld .ico .win{fill:#12161c;transition:fill .3s}
+  .bld.open .ico .win{fill:#ffd24a}
+  .bld .sign{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:2;width:64px;max-width:86%;
+    text-align:center;font-family:"JetBrains Mono",monospace;font-size:8px;line-height:1.1;word-break:break-word;
+    padding:2px 4px;border-radius:2px;background:#2c333b;color:#6b7682;border:1px solid #1f262d}
+  .bld.open .sign{background:#ffd24a;color:#2a2012;border-color:#e0b53e;box-shadow:0 0 8px #ffd24a55}
+
+  /* ---------- CONTENEUR MARITIME (volume) ---------- */
+  .cargos{display:flex;flex-direction:column;gap:6px;justify-content:flex-end}
+  .cargo{width:60px;border-radius:3px;position:relative;
+    background:repeating-linear-gradient(90deg,#c9772e 0 6px,#9c5a20 6px 8px);
+    border:2px solid #7a4416;box-shadow:0 4px 0 #00000055,inset 0 0 0 2px #ffffff14}
+  .cargo .ctop{height:6px;background:#00000033;border-bottom:1px solid #00000033}
+  .cargo .clabel{font-family:"JetBrains Mono",monospace;font-size:9px;text-align:center;color:#2a1605;padding:5px 3px;word-break:break-all}
+  .cargo.moored::before{content:"";position:absolute;top:-9px;left:50%;width:2px;height:9px;background:#caa;opacity:.6}
+  .cargo.moored::after{content:"amarré";position:absolute;top:-19px;left:50%;transform:translateX(-50%);
+    font-family:"JetBrains Mono",monospace;font-size:8px;color:#cfe0ea;opacity:.7}
+
+  /* ---------- ROUTE batiment -> quai ---------- */
+  .route{font-family:"JetBrains Mono",monospace;font-size:9px;color:#bcd9de;opacity:.9;text-align:center;position:relative;margin-top:2px;padding-top:7px}
+  .route::before{content:"";position:absolute;top:0;left:50%;width:2px;height:6px;background:#7fd1d6;opacity:.55;transform:translateX(-50%)}
+  /* ---------- QUAI (port publié) ---------- */
+  .quais{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .quai{display:flex;flex-direction:column;align-items:center}
+  .quai .pier{width:12px;height:16px;background:repeating-linear-gradient(0deg,#6b4a2a 0 4px,#553a20 4px 6px);border-radius:0 0 2px 2px}
+  .quai .boat{font-size:18px;line-height:1;margin-top:-2px;filter:drop-shadow(0 2px 2px #00000066)}
+  .quai .qnum{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--hazard);background:#0e2030;border:1px solid var(--hazard);border-radius:5px;padding:0 5px;margin-top:2px;white-space:nowrap}
+  .quai.closed .boat{filter:grayscale(1) opacity(.4)}
+
+  .brief{padding:14px}
+  .opno{font-family:"JetBrains Mono",monospace;color:var(--signal);font-size:12px;letter-spacing:2px}
+  .brief h3{font-family:"Stardos Stencil",sans-serif;margin:.2em 0 .4em;font-size:19px}
+  .brief p{margin:.4em 0;font-size:15px;color:#d6e3ea}
+  .goal{border-left:3px solid var(--hazard);padding:6px 10px;background:#f2b70510;border-radius:4px;font-size:14px}
+  .hintbtn{margin-top:10px;background:#13283a;color:var(--foam);border:1px solid var(--foam);font-family:"Barlow Semi Condensed";font-weight:600;border-radius:8px;padding:6px 12px;cursor:pointer}
+  .hint{margin-top:8px;font-size:13px;color:var(--muted);display:none}
+  .hint.show{display:block}
+  .doc{margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:12px;color:#9fd0c0;background:#0c1d2b;border:1px solid var(--line);border-radius:8px;padding:8px;white-space:pre-wrap;max-height:160px;overflow:auto}
+  .editor{margin-top:12px}
+  .editor .edhint{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .fblock{margin-bottom:10px}
+  .fblock .fname{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--foam);margin-bottom:3px}
+  .fed{width:100%;min-height:118px;box-sizing:border-box;background:#0c1d2b;color:#cfe7df;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.4;resize:vertical}
+  .savebtn{margin-top:5px;background:#13283a;color:var(--foam);border:1px solid var(--foam);font-family:"Barlow Semi Condensed";font-weight:600;border-radius:8px;padding:5px 12px;cursor:pointer}
+  .desk .dtabs{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
+  .dtab{background:#0c1d2b;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-family:"JetBrains Mono",monospace;font-size:12px;cursor:pointer}
+  .dtab.on{color:var(--foam);border-color:var(--foam);background:#13283a}
+  .deskfed{width:100%;min-height:150px;box-sizing:border-box;background:#0c1d2b;color:#cfe7df;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.45;resize:vertical}
+  .desk .savebtn{margin-top:8px}
+
+  .term{font-family:"JetBrains Mono",monospace}
+  .out{padding:12px 14px;height:200px;overflow:auto;font-size:13px;line-height:1.5;white-space:pre-wrap}
+  .out .cmd{color:var(--hazard)} .out .err{color:var(--red)} .out .ok{color:var(--green)} .out .dim{color:var(--muted)}
+  .inrow{display:flex;align-items:center;gap:8px;border-top:2px solid var(--line);padding:8px 12px;background:#0c1d2b}
+  .prompt{color:var(--foam)}
+  .inrow input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:"JetBrains Mono",monospace;font-size:14px}
+  .footnote{color:var(--muted);font-size:12px;text-align:center;padding:2px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);padding:2px}
+  .legend b{color:#cfe0ea;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="logo">
+      <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+        <rect x="6" y="22" width="34" height="14" rx="2" fill="#1f6f8b"/>
+        <g fill="#f2b705"><rect x="9" y="14" width="8" height="8"/><rect x="19" y="14" width="8" height="8"/><rect x="29" y="14" width="8" height="8"/><rect x="14" y="5" width="8" height="8"/><rect x="24" y="5" width="8" height="8"/></g>
+        <path d="M6 36 q5 6 11 0 q5 6 11 0 q5 6 11 0" fill="none" stroke="#7fd1d6" stroke-width="2"/>
+      </svg>
+      <div><h1>LE PORT DES <span>CONTENEURS</span></h1><small>simulateur hors-ligne &middot; aucune installation requise</small></div>
+    </div>
+    <div class="manifest">
+      <span class="live"><span class="dot" id="dot" style="background:#7fd1d6"></span><span id="livetxt">simulateur</span></span>
+      <b id="opcount">étape 1 / 10</b><div id="segs"></div>
+    </div>
+  </header>
+
+  <div class="alert" id="alert"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>LA RADE (simulateur)</h2>
+      <div class="stage"><div class="harbor"><div class="islands" id="islands"></div></div></div>
+      <div class="legend">
+        <span>🏢 <b>bâtiment</b> = service</span>
+        <span>📦 <b>conteneur maritime</b> = volume</span>
+        <span>🚢 <b>quai</b> = port publié</span>
+        <span>🌉 <b>pont</b> = réseau</span>
+        <span>▢ <b>quartier</b> = compose</span>
+      </div>
+    </div>
+    <div class="panel"><h2>FEUILLE DE ROUTE</h2><div class="brief" id="brief"></div></div>
+  </div>
+
+  <div class="panel term">
+    <h2>POSTE DE COMMANDE (simulateur)</h2>
+    <div class="out" id="out"></div>
+    <div class="inrow"><span class="prompt">grutier@port</span><span style="color:var(--muted)" id="promptsym">:~$</span>
+      <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="tape une vraie commande docker... (essaie: aide)"></div>
+  </div>
+  <div class="panel desk">
+    <h2>LA TABLE À PLANS (écris ici tes fichiers : Dockerfile, compose.yaml...)</h2>
+    <div class="dtabs">
+      <button class="dtab on" data-file="Dockerfile">Dockerfile</button>
+      <button class="dtab" data-file=".dockerignore">.dockerignore</button>
+      <button class="dtab" data-file="compose.yaml">compose.yaml</button>
+    </div>
+    <textarea id="deskeditor" class="deskfed" spellcheck="false" autocapitalize="off" placeholder="# écris ici le contenu du fichier, puis classe-le"></textarea>
+    <button id="desksave" class="savebtn">Classer ce plan</button>
+  </div>
+  <div class="footnote">Commandes du poste : <b>aide</b>, <b>objectif</b>, <b>indice</b>, <b>clear</b>. La table à plans (en bas) sert à écrire tes fichiers quand tu en as besoin.</div>
+</div>
+
+<script>
+
+"use strict";
+const out=document.getElementById("out");
+function print(t,cls){const d=document.createElement("div");if(cls)d.className=cls;d.textContent=t;out.appendChild(d);out.scrollTop=out.scrollHeight;}
+function el(cls){const d=document.createElement("div");d.className=cls;return d;}
+function isUserNet(n){return n&&!["bridge","host","none"].includes(n);}
+function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function typeOf(img){
+  if(/^redis/.test(img)) return {type:"cache",ico:"⚡",accent:"#e0463f",lit:"#ff9a8a"};
+  if(/^(postgres|mysql|mariadb|mongo)/.test(img)) return {type:"db",ico:"🗄️",accent:"#7b6cff",lit:"#bcb2ff"};
+  if(/^nginx/.test(img)) return {type:"web",ico:"🌐",accent:"#1f9e8f",lit:"#7fe6d6"};
+  if(/^hello-world/.test(img)) return {type:"hut",ico:"👋",accent:"#6c7a86",lit:"#9fd0c0"};
+  return {type:"office",ico:"🏢",accent:"#f08a2b",lit:"#ffd56a"};
+}
+function colorFor(img){var h=2166136261;for(var i=0;i<img.length;i++){h^=img.charCodeAt(i);h=Math.imul(h,16777619);}return "hsl("+((h>>>0)%360)+",46%,52%)";}
+function shapeSVG(type){
+  function row(ys){var s="";ys.forEach(function(y){[26,44,62].forEach(function(x){s+='<rect class="win" x="'+x+'" y="'+y+'" width="13" height="11" rx="2"/>';});});return s;}
+  if(type==="cache"){
+    return '<svg class="ico" viewBox="0 0 100 120" width="112" height="118" aria-hidden="true">'
+      +'<ellipse class="roof" cx="50" cy="50" rx="42" ry="26"/>'
+      +'<rect class="wall" x="14" y="48" width="72" height="66" rx="3"/>'
+      +'<rect class="win" x="22" y="58" width="12" height="10" rx="2"/><rect class="win" x="44" y="58" width="12" height="10" rx="2"/><rect class="win" x="66" y="58" width="12" height="10" rx="2"/>'
+      +'<rect class="door" x="40" y="92" width="20" height="22" rx="2"/></svg>';
+  }
+  if(type==="db"){
+    return '<svg class="ico" viewBox="0 0 100 120" width="100" height="122" aria-hidden="true">'
+      +'<path class="roof" d="M10 42 L50 12 L90 42 Z"/>'
+      +'<rect class="wall" x="18" y="40" width="64" height="74" rx="3"/>'
+      +row([50])
+      +'<rect class="door" x="42" y="92" width="16" height="22" rx="2"/></svg>';
+  }
+  return '<svg class="ico" viewBox="0 0 100 120" width="100" height="122" aria-hidden="true">'
+    +'<rect class="roof" x="10" y="12" width="80" height="9" rx="2"/>'
+    +'<rect class="wall" x="16" y="20" width="68" height="94" rx="3"/>'
+    +row([30,47])
+    +'<rect class="door" x="42" y="92" width="16" height="22" rx="2"/></svg>';
+}
+const DF="FROM node:22-alpine\nWORKDIR /app\nCOPY package.json ./\nRUN npm install --omit=dev\nCOPY . .\nEXPOSE 3000\nCMD [\"node\",\"server.js\"]";
+const YML="services:\n  app:\n    build: .\n    image: mon-app-custom:1.0\n    ports: [\"3000:3000\"]\n    environment:\n      REDIS_HOST: cache\n    depends_on: [cache]\n  cache:\n    image: redis:7-alpine\n    command: [\"redis-server\",\"--appendonly\",\"yes\"]\n    volumes: [\"app-data:/data\"]\nvolumes:\n  app-data:";
+
+/* ---------- MOTEUR DE SIMULATION ---------- */
+const sizes={"hello-world":"13kB","nginx":"187MB","redis:7-alpine":"41MB","node:22-alpine":"152MB","mon-app-custom:1.0":"190MB"};
+function longRunning(img){return !/^hello-world/.test(img);}
+let S;
+function freshState(){return{images:new Map(),containers:new Map(),networks:new Set(),volumes:new Set(),everRan:new Set(),removed:0,pushed:false,stoppedOnce:false,startedAfterStop:false,files:{},shell:null,nameSeed:0};}
+const funnyNames=["calmar_vaillant","ancre_joyeuse","mouette_agile","phare_serein","cordage_fou","brise_marine"];
+function autoName(){return funnyNames[(S.nameSeed++)%funnyNames.length];}
+function tokenize(line){const o=[];let cur="",q=null,has=false;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch===q)q=null;else cur+=ch;has=true;}else if(ch==='"'||ch==="'"){q=ch;has=true;}else if(/\s/.test(ch)){if(has){o.push(cur);cur="";has=false;}}else{cur+=ch;has=true;}}if(has)o.push(cur);return o;}
+function ensureImage(img){if(!S.images.has(img))S.images.set(img,sizes[img]||"120MB");}
+function dockerRun(args){
+  let name=null,ports=[],env={},network=null,volumes=[],image=null;
+  for(let i=0;i<args.length;i++){let a=args[i];
+    if(a==="-d"||a==="--detach"||a==="-it"||a==="-dit"){}
+    else if(a==="-i"||a==="-t"||a==="--rm"){}
+    else if(a==="--name"){name=args[++i];}
+    else if(a==="-p"||a==="--publish"){ports.push(args[++i]);}
+    else if(a.startsWith("-p")&&a.length>2){ports.push(a.slice(2));}
+    else if(a==="-e"||a==="--env"){const kv=args[++i]||"";const x=kv.indexOf("=");if(x>0)env[kv.slice(0,x)]=kv.slice(x+1);}
+    else if(a.startsWith("-e")&&a.length>2){const kv=a.slice(2);const x=kv.indexOf("=");if(x>0)env[kv.slice(0,x)]=kv.slice(x+1);}
+    else if(a==="--network"||a==="--net"){network=args[++i];}
+    else if(a==="-v"||a==="--volume"){volumes.push(args[++i]);}
+    else if(a.startsWith("-")){}
+    else{image=a;break;}
+  }
+  if(!image){print("docker: \"run\" attend le nom d'une image.","err");return;}
+  if(network&&!S.networks.has(network)){print('Erreur : le réseau "'+network+'" n\'existe pas (docker network create).',"err");return;}
+  if(!name)name=autoName();
+  if(S.containers.has(name)&&S.containers.get(name).status==="running"){print('Erreur : le nom "'+name+'" est déjà utilisé.',"err");return;}
+  for(const p of ports){const host=p.split(":")[0];for(const[,cc]of S.containers){if(cc.status==="running"&&(cc.ports||[]).some(pp=>pp.split(":")[0]===host)){print("Erreur : un quai numéro "+host+" existe déjà (port "+host+" already allocated). Deux quais ne peuvent pas porter le même numéro.","err");return;}}}
+  const vmounts=[];volumes.forEach(v=>{const vol=v.split(":")[0];if(vol&&!vol.startsWith("/")&&!vol.startsWith(".")){S.volumes.add(vol);vmounts.push(vol);}});
+  ensureImage(image);S.everRan.add(image);
+  const status=longRunning(image)?"running":"exited";
+  S.containers.set(name,{image,status,ports,env,network,volumes:vmounts});
+  if(longRunning(image)){print(name,"ok");if(ports.length)print("  -> service en marche, quai "+ports.join(", "),"dim");}
+  else print("Hello from Docker ! Le conteneur a fait son travail et s'est arrêté.","dim");
+}
+function fmtPorts(p){return p.length?p.join(", "):"";}
+function dockerPs(all){const rows=[["NAME","IMAGE","STATUS","PORTS"]];for(const[n,c]of S.containers){if(all||c.status==="running")rows.push([n,c.image,c.status==="running"?"Up":"Exited",fmtPorts(c.ports)]);}if(rows.length===1){print("(aucun conteneur)","dim");return;}const w=[0,0,0,0];rows.forEach(r=>r.forEach((v,i)=>w[i]=Math.max(w[i],v.length)));rows.forEach(r=>print(r.map((v,i)=>v.padEnd(w[i]+3)).join(""),"dim"));}
+function dockerImages(){if(S.images.size===0){print("(aucune image)","dim");return;}print("REPOSITORY".padEnd(22)+"SIZE","dim");for(const[n,s]of S.images)print(n.padEnd(22)+s,"dim");}
+function dockerLogs(name){const c=S.containers.get(name);if(!c){print('Erreur : aucun conteneur "'+name+'".',"err");return;}if(c.image.indexOf("nginx")===0){print('172.17.0.1 - - "GET / HTTP/1.1" 200',"dim");}else if(c.image.indexOf("redis")===0){print("Ready to accept connections tcp","dim");}else if(c.image.indexOf("mon-app-custom")===0){print("mon-app-custom ecoute sur le port 3000","dim");print(c.env.REDIS_HOST?("Redis connecte sur "+c.env.REDIS_HOST+":6379"):"Aucun REDIS_HOST : registre en memoire","dim");}else print("(pas de logs notables)","dim");}
+function dockerExec(args){var rest=args.filter(function(a){return ["-it","-i","-t","-ti","--interactive","--tty"].indexOf(a)<0;});var name=rest[0];var cmd=rest.slice(1);var c=S.containers.get(name);if(!c){print('Erreur : aucun conteneur "'+name+'".',"err");return;}if(c.status!=="running"){print('Erreur : le conteneur "'+name+'" n\'est pas en marche.',"err");return;}var sh=cmd.length===0||["sh","bash","/bin/sh","/bin/bash","ash"].indexOf(cmd[0])>=0;if(sh){S.shell={name:name,cwd:"/app"};updatePrompt();print("(tu es maintenant dans le conteneur "+name+" ; tape exit pour ressortir)","dim");return;}S.shell={name:name,cwd:"/app"};runInContainer(cmd.join(" "));S.shell=null;}
+function dockerStop(name){const c=S.containers.get(name);if(!c){print('Erreur : aucun conteneur "'+name+'".',"err");return;}c.status="exited";S.stoppedOnce=true;print(name,"ok");}
+function dockerRm(name,force){const c=S.containers.get(name);if(!c){print('Erreur : aucun conteneur "'+name+'".',"err");return;}if(c.status==="running"&&!force){print('Erreur : conteneur "'+name+'" en marche. stop d\'abord, ou -f.',"err");return;}S.containers.delete(name);S.removed++;print(name,"ok");}
+function dockerRmi(img){if(S.images.delete(img))print("Image supprimée : "+img,"ok");else print('Erreur : image "'+img+'" introuvable.',"err");}
+function dockerBuild(args){if(!(S.files&&S.files.Dockerfile&&S.files.Dockerfile.trim())){print("ERROR: failed to read dockerfile: open Dockerfile: no such file or directory","err");return;}let tag=null;for(let i=0;i<args.length;i++){if(args[i]==="-t"||args[i]==="--tag")tag=args[++i];}if(!tag){print("Indique un nom avec -t, ex : docker build -t mon-app-custom:1.0 .","err");return;}if(!tag.includes(":"))tag+=":latest";print("[+] Building ...","dim");S.images.set(tag,sizes[tag]||"190MB");print("Image construite : "+tag,"ok");}
+function dockerTag(src,dst){if(!S.images.has(src)){print('Erreur : image source "'+src+'" introuvable.',"err");return;}if(!dst.includes(":"))dst+=":latest";S.images.set(dst,S.images.get(src));print(src+" -> "+dst,"ok");}
+function dockerPush(name){if(!S.images.has(name)){print('Erreur : image "'+name+'" introuvable (docker tag ?).',"err");return;}if(!name.includes("/")){print("denied : préfixe identifiant requis, ex monid/mon-app-custom:1.0","err");return;}print("The push refers to repository ["+name.split(":")[0]+"]","dim");print("1.0: pushed","ok");S.pushed=true;}
+function dockerNetwork(args){const s=args[0];if(s==="create"){const n=args[1];if(!n){print("Indique un nom de réseau.","err");return;}S.networks.add(n);print(n,"ok");}else if(s==="ls"){print("NETWORK","dim");print("bridge","dim");S.networks.forEach(n=>print(n,"dim"));}else print("Sous-commande réseau inconnue (create, ls).","err");}
+function dockerVolume(args){const s=args[0];if(s==="create"){const n=args[1];if(!n){print("Indique un nom de volume.","err");return;}S.volumes.add(n);print(n,"ok");}else if(s==="ls"){print("VOLUME","dim");S.volumes.forEach(n=>print(n,"dim"));}else print("Sous-commande volume inconnue (create, ls).","err");}
+function composeUp(){
+  for(const[,cc]of S.containers){if(cc.status==="running"&&(cc.ports||[]).some(pp=>pp.split(":")[0]==="3000")){print("Erreur : un quai numéro 3000 existe déjà. Fais le ménage (docker rm -f) avant docker compose up.","err");return;}}
+  S.networks.add("port_default");S.volumes.add("app-data");ensureImage("redis:7-alpine");ensureImage("mon-app-custom:1.0");S.everRan.add("mon-app-custom:1.0");
+  S.containers.set("port-cache-1",{image:"redis:7-alpine",status:"running",ports:[],env:{},network:"port_default",volumes:["app-data"]});
+  S.containers.set("port-app-1",{image:"mon-app-custom:1.0",status:"running",ports:["3000:3000"],env:{APP_MESSAGE:"Bonjour le port",REDIS_HOST:"cache"},network:"port_default",volumes:[]});
+  print("[+] Running 2/2","dim");print(" Container port-cache-1  Started","ok");print(" Container port-app-1    Started","ok");
+}
+function composeDown(){["port-app-1","port-cache-1"].forEach(n=>S.containers.delete(n));print("Quartier démonté.","ok");}
+function composePs(){const r=[...S.containers].filter(([n])=>n.indexOf("port-")===0);if(!r.length){print("(aucun service Compose)","dim");return;}r.forEach(([n,c])=>print(n.padEnd(16)+" "+c.image.padEnd(20)+" "+(c.status==="running"?"running":"exited"),"dim"));}
+function dockerCompose(args){const s=args[0];if(s==="up"){if(!(S.files&&(S.files["compose.yaml"]||S.files["compose.yml"]))){print("no configuration file provided: not found","err");return;}composeUp();}else if(s==="down")composeDown();else if(s==="ps")composePs();else if(s==="logs"){print("port-app-1 | Redis connecte sur cache:6379","dim");}else print("Sous-commande compose inconnue (up, down, ps, logs).","err");}
+function execSim(line){const t=tokenize(line);if(t[0]!=="docker"){var fileCmds=["cat","nano","vim","vi","emacs","echo","touch","ls","cd","mkdir","code","mv","cp","pwd","dockerfile"];if(fileCmds.indexOf((t[0]||"").toLowerCase())>=0){print("Ici, le poste de commande ne joue que des commandes docker, et le simulateur n'a pas de systeme de fichiers.","err");print("Pas besoin de creer le Dockerfile ici : tape directement  docker build -t mon-app-custom:1.0 .","dim");}else{print('Ici on ne joue que des commandes docker. Tape "aide" pour la liste.',"err");}return;}if(t[1]==="compose"){dockerCompose(t.slice(2));return;}switch(t[1]){
+  case "version":case "--version":print("Docker version 27.0 (simulé)","dim");break;
+  case "run":dockerRun(t.slice(2));break;
+  case "ps":dockerPs(t.includes("-a")||t.includes("--all"));break;
+  case "images":dockerImages();break;
+  case "image":if(t[2]==="ls")dockerImages();else print("Essaie : docker images","err");break;
+  case "logs":dockerLogs(t[2]);break;
+  case "exec":dockerExec(t.slice(2));break;
+  case "stop":dockerStop(t[2]);break;
+  case "start":{const c=S.containers.get(t[2]);if(c){c.status="running";if(S.stoppedOnce)S.startedAfterStop=true;print(t[2],"ok");}else print('Erreur : aucun conteneur "'+t[2]+'".',"err");}break;
+  case "rm":{const f=t.includes("-f")||t.includes("--force");const nm=t.slice(2).find(x=>!x.startsWith("-"));dockerRm(nm,f);}break;
+  case "rmi":dockerRmi(t[2]);break;
+  case "build":dockerBuild(t.slice(2));break;
+  case "pull":ensureImage(t[2]);print("Image téléchargée : "+t[2],"ok");break;
+  case "tag":dockerTag(t[2],t[3]);break;
+  case "push":dockerPush(t[2]);break;
+  case "login":print("Login Succeeded","ok");break;
+  case "network":dockerNetwork(t.slice(2));break;
+  case "volume":dockerVolume(t.slice(2));break;
+  default:print("Sous-commande docker inconnue : "+t[1]+'. Tape "aide".',"err");
+}}
+
+/* ---------- ETAT POUR LE RENDU ---------- */
+let live={containers:[],images:[],networks:[],volumes:[],flags:{},dockerOk:true};
+function syncLive(){
+  live.containers=[...S.containers].map(([name,c])=>({name,image:c.image,running:c.status==="running",ports:c.ports||[],networks:(c.network&&isUserNet(c.network))?[c.network]:[],volumes:c.volumes||[],env:c.env||{},compose:name.indexOf("port-")===0,composeProject:name.indexOf("port-")===0?"port":null}));
+  live.images=[...S.images].map(([name,size])=>({name,size}));
+  live.volumes=[...S.volumes];live.networks=[...S.networks];live.flags={removedContainer:S.removed>0,pushed:S.pushed,stoppedThenStarted:S.startedAfterStop};live.dockerOk=true;
+}
+function running(){return live.containers.filter(c=>c.running);}
+function runImg(p){return running().find(c=>c.image.indexOf(p)===0);}
+function userNets(c){return (c.networks||[]).filter(isUserNet);}
+function netGroups(){const g={};running().forEach(c=>userNets(c).forEach(n=>g[n]=(g[n]||0)+1));return g;}
+
+const OBJ=[
+ {t:"Accueillir les bateaux",d:"Des bateaux se présentent déjà à l'entrée du port, et personne pour les accueillir. Ta première affaire : leur ouvrir un accueil. Pas la peine d'en bâtir un sur mesure, un accueil standard, déjà tout équipé, fera très bien l'affaire pour commencer.",goal:"Objectif : ouvrir un premier service à partir d'une image toute prête, par exemple nginx, et le laisser tourner en fond.",hint:"Indice : une commande met une image en route et la fait tourner comme un service ; une option la laisse travailler en arrière-plan (au mémo, mot-clé detached), et une autre te liste ce qui tourne.",doc:null,check:()=>running().length>=1},
+ {t:"Ton propre établissement",d:"Cet accueil standard dépanne, mais il n'est pas fait pour ton port. Le moment est venu d'ouvrir le tien, conçu pour tes besoins. Tu n'en trouveras nulle part de tout prêt : il faut le bâtir, d'après tes propres plans.",goal:"Objectif : construire ton image mon-app-custom à partir de son plan, puis ouvrir le service.",hint:"Indice : pour fabriquer ta propre image, il te faut d'abord écrire son plan (au mémo, le Dockerfile) ; ensuite, une commande transforme ce plan en image. Le mémo te donne les briques, à toi de les assembler.",files:["Dockerfile",".dockerignore"],check:()=>live.images.some(i=>i.name==="mon-app-custom:1.0")&&!!runImg("mon-app-custom")},
+ {t:"Faire le ménage",d:"Ton établissement est ouvert ; le vieil accueil de dépannage n'a plus lieu d'être. Avant de le fermer pour de bon, c'est l'occasion d'apprendre à t'occuper d'un service au quotidien : voir ce qu'il raconte, y entrer un instant, l'arrêter. Puis débarrasse le port de cet accueil devenu inutile.",goal:"Objectif : évacuer un service (le supprimer après l'avoir arrêté, ou en forçant).",hint:"Indice : pour t'occuper d'un service, le mémo rassemble de quoi lire ses journaux, entrer dedans, l'arrêter et le retirer. Garde en tête qu'un service en marche refuse d'être supprimé tant qu'il n'est pas arrêté.",doc:null,check:()=>!!live.flags.removedContainer},
+ {t:"Ouvrir un quai",d:"Ton établissement tourne, mais aucun bateau ne peut l'atteindre : il n'a pas d'accès sur la mer. Ouvre-lui un quai pour que les bateaux viennent y accoster. Et retiens la règle d'or : deux quais ne peuvent pas porter le même numéro, sinon les bateaux ne savent plus où aller.",goal:"Objectif : rendre ton service joignable en publiant un quai (port), par exemple 3000.",hint:"Indice : cherche au mémo l'option qui publie un accès vers l'extérieur (mot-clé publish) ; elle se fixe à l'ouverture du service, il faut donc le rouvrir avec.",doc:null,check:()=>running().some(c=>c.ports&&c.ports.length>0)},
+ {t:"L'enseigne",d:"Les premiers bateaux accostent, et ton établissement les accueille avec un mot affiché en façade. Tu voudras pouvoir le changer selon l'occasion, sans tout rebâtir à chaque fois. Glisse-lui son message au moment de l'ouvrir.",goal:"Objectif : rouvrir ton service en lui passant son message par la variable APP_MESSAGE.",hint:"Indice : un service lit sa configuration dans des variables d'environnement ; le mémo te donne l'option pour en passer une. Le nom exact de la variable est en haut de server.js.",doc:null,check:()=>running().some(c=>c.env&&c.env.APP_MESSAGE)},
+ {t:"La mémoire qui survit",d:"On aurait besoin de garder la liste des bateaux déjà passés. Problème : tout ce que ton établissement enregistre est perdu dès que tu le fermes, il ne retient rien d'une fois sur l'autre. Pour conserver ces informations, il lui faut de quoi les stocker au-dehors. Amarre-lui à côté un conteneur scellé où ranger ce qui doit durer.",goal:"Objectif : rouvrir ton service avec un conteneur maritime (volume) amarré, par ex. app-data sur /data.",hint:"Indice : le mémo a une famille de commandes pour les conteneurs maritimes ; crée-en un, puis amarre-le, à l'ouverture du service, au dossier où il range ses données.",doc:null,check:()=>running().some(c=>c.volumes&&c.volumes.length>0)},
+ {t:"Un entrepôt, et un pont",d:"Ton conteneur fait l'affaire, mais tout y est entassé en vrac : dès qu'il y a du monde, retrouver une information dedans devient lent. Tu installes alors un voisin spécialisé là-dedans, un entrepôt de données, qui range tout méthodiquement et retrouve ce qu'on lui demande bien plus vite. Seulement, ton établissement et l'entrepôt sont sur deux îles séparées : tant qu'aucun pont ne les relie, ils ne peuvent pas se parler.",goal:"Objectif : faire tourner un entrepôt (image redis) et le relier à ton service par un même réseau, puis indiquer à ton service où le joindre.",hint:"Indice : le mémo a une famille de commandes pour les ponts ; pose un pont, ouvre l'entrepôt et ton service dessus, puis indique à ton service le nom qui lui permet de joindre l'entrepôt.",doc:null,check:()=>Object.values(netGroups()).some(v=>v>=2)},
+ {t:"Encaisser une coupure",d:"Imprévu : l'entrepôt doit fermer un moment pour entretien. Ferme-le, vois ce qui se passe côté établissement, puis rouvre-le sans rien reconstruire. Tu le constateras : les registres n'ont pas bougé. Fermer n'est pas démolir.",goal:"Objectif : arrêter puis relancer un service (stop puis start), sans le recréer.",hint:"Indice : le mémo distingue arrêter, relancer et supprimer un service ; ici tu veux seulement l'arrêter puis le relancer, surtout pas le supprimer.",doc:null,check:()=>!!live.flags.stoppedThenStarted},
+ {t:"Le plan d'ensemble",d:"Tu as tout ouvert à la main, l'un après l'autre, avec de longues consignes. On te confie un second port à dresser à l'identique, sans rien oublier. Plutôt que tout refaire pièce par pièce, couche sur un seul plan l'ensemble de l'installation, et fais tout ouvrir d'un seul ordre.",goal:"Objectif : décrire toute l'installation dans un fichier compose.yaml, puis tout lever avec docker compose up -d.",hint:"Indice : tout se décrit dans un seul fichier compose, dont le mémo donne la structure (un bloc par service, avec son image ou sa fabrication, ses quais, ses variables, ses volumes, son réseau). Pense à libérer le quai avant de tout lever.",files:["compose.yaml"],check:()=>running().some(c=>c.compose)},
+ {t:"Expédier le plan",d:"Un port lointain veut faire tourner exactement le même établissement que le tien. Tu ne lui envoies pas le bâtiment, tu lui envoies son plan. Dépose-le à l'entrepôt central, sous ton nom, pour qu'il puisse l'y récupérer.",goal:"Objectif : renommer l'image sous ton identifiant, puis la pousser (identifiant/mon-app-custom:1.0).",hint:"Indice : le mémo couvre les trois gestes de l'expédition : donner à l'image un second nom à ton identifiant, te connecter à l'entrepôt central, puis l'y pousser.",doc:null,check:()=>!!live.flags.pushed}
+];
+let cur=0;
+function recompute(){let a=false;while(cur<OBJ.length&&OBJ[cur].check()){print("Étape validée : "+OBJ[cur].t+".","ok");cur++;a=true;}renderSegs();renderBrief();}
+function renderSegs(){const box=document.getElementById("segs");box.innerHTML="";OBJ.forEach((_,i)=>{box.appendChild(el("seg"+(i<cur?" done":i===cur?" current":"")));});document.getElementById("opcount").textContent="étape "+Math.min(cur+1,OBJ.length)+" / "+OBJ.length;}
+var fileDraft={};
+function editorHtml(files){var h='<div class="editor"><div class="edhint">À toi d\'écrire le contenu, puis Enregistrer :</div>';files.forEach(function(n){h+='<div class="fblock"><div class="fname">'+n+'</div><textarea class="fed" data-name="'+n+'" spellcheck="false" placeholder="# contenu de '+n+'"></textarea><button class="savebtn" data-name="'+n+'">Enregistrer '+n+'</button></div>';});return h+'</div>';}
+function wireEditor(){var b=document.getElementById("brief");b.querySelectorAll(".fed").forEach(function(ta){var n=ta.getAttribute("data-name");ta.value=fileDraft[n]||"";ta.addEventListener("input",function(){fileDraft[n]=ta.value;});});b.querySelectorAll(".savebtn").forEach(function(btn){btn.addEventListener("click",function(){saveFile(btn.getAttribute("data-name"));});});}
+function saveFile(name){var content=fileDraft[name]||"";if(!content.trim()){print("Le fichier "+name+" est vide. Écris-le avant de le classer.","err");return;}S.files=S.files||{};S.files[name]=content;print(name+" classé (table à plans).","ok");}
+function renderBrief(){const b=document.getElementById("brief");if(cur>=OBJ.length){b.innerHTML='<div class="opno">FIN DE PARCOURS</div><h3>Port opérationnel</h3><p>Bâtiments, quais, ponts, conteneurs maritimes, quartiers : tu as tout géré.</p>';return;}const o=OBJ[cur];let h='<div class="opno">ÉTAPE '+(cur+1)+' / '+OBJ.length+'</div><h3>'+o.t+'</h3><p>'+o.d+'</p><div class="goal">'+o.goal+'</div>';h+='<button class="hintbtn" id="hintbtn">Demander un indice</button><div class="hint" id="hintb">'+o.hint+'</div>';b.innerHTML=h;document.getElementById("hintbtn").onclick=()=>document.getElementById("hintb").classList.toggle("show");}
+
+let prevNames=new Set();
+function buildingEl(c){
+  const ty=typeOf(c.image),isNew=!prevNames.has(c.name);
+  const b=el("bld "+(c.running?"open":"closed")+(isNew?" new":""));
+  b.title=c.image;
+  b.innerHTML=shapeSVG(ty.type)+'<div class="sign">'+c.name+'</div>';
+  return b;
+}
+function islandEl(c,seen){
+  seen.add(c.name);
+  const isl=el("island");
+  const yard=el("yard");yard.appendChild(buildingEl(c));
+  if(c.volumes&&c.volumes.length){const w=el("cargos");c.volumes.forEach(function(v){const cg=el("cargo moored");cg.innerHTML='<div class="ctop"></div><div class="clabel">\uD83D\uDCE6 '+v+'</div>';w.appendChild(cg);});yard.appendChild(w);}
+  isl.appendChild(yard);
+  if(c.ports&&c.ports.length){
+    var conts=c.ports.map(function(p){return p.split(":")[1]||p.split(":")[0];}).filter(function(v,i,a){return a.indexOf(v)===i;});
+    var rt=el("route");rt.innerHTML="route vers "+conts.map(function(x){return ":"+x;}).join(" ");isl.appendChild(rt);
+    var qw=el("quaiwrap");c.ports.forEach(function(p){const host=p.split(":")[0];const qd=el("quai"+(c.running?"":" closed"));qd.innerHTML='<div class="pier"></div><div class="boat">\uD83D\uDEA2</div><div class="qnum">quai '+host+'</div>';qw.appendChild(qd);});isl.appendChild(qw);
+  }
+  return isl;
+}
+function renderPort(){
+  const stage=document.getElementById("islands");stage.innerHTML="";
+  const conts=live.containers.slice();
+  const mounted=new Set();conts.forEach(c=>(c.volumes||[]).forEach(v=>mounted.add(v)));
+  const unmounted=(live.volumes||[]).filter(v=>!mounted.has(v));
+  if(conts.length===0&&unmounted.length===0){stage.innerHTML='<div class="empty">La rade est vide. Pose ton premier bâtiment avec docker run.</div>';prevNames=new Set();return;}
+  const parent={};const find=x=>parent[x]===x?x:(parent[x]=find(parent[x]));
+  conts.forEach(c=>parent[c.name]=c.name);
+  const byNet={};conts.forEach(c=>userNets(c).forEach(n=>(byNet[n]=byNet[n]||[]).push(c.name)));
+  Object.values(byNet).forEach(m=>{for(let i=1;i<m.length;i++)parent[find(m[i])]=find(m[0]);});
+  const groups=new Map();
+  conts.forEach(c=>{const r=find(c.name);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(c);});
+  const seen=new Set();
+  groups.forEach(items=>{
+    const nets=new Set();let project=null;
+    items.forEach(c=>{userNets(c).forEach(n=>nets.add(n));if(c.composeProject)project=c.composeProject;});
+    const grp=el("group"+(project?" district":""));
+    let txt=project?("quartier : "+project):((items.length>1&&nets.size)?("réseau : "+[...nets].join(", ")):null);
+    if(txt){const bn=el("banner");bn.textContent=txt;grp.appendChild(bn);}
+    items.forEach((c,i)=>{if(i>0)grp.appendChild(el("bridge"));grp.appendChild(islandEl(c,seen));});
+    stage.appendChild(grp);
+  });
+  if(unmounted.length){
+    const d=el("island depot");const bn=el("banner");bn.textContent="dépôt (volumes libres)";d.appendChild(bn);
+    const w=el("cargos");unmounted.forEach(function(v){const cg=el("cargo");cg.innerHTML='<div class="ctop"></div><div class="clabel">\uD83D\uDCE6 '+v+'</div>';w.appendChild(cg);});
+    d.appendChild(w);stage.appendChild(d);
+  }
+  prevNames=seen;
+}
+
+function update(){syncLive();renderPort();recompute();}
+function promptStr(){return S.shell?(S.shell.cwd+" # "):"grutier@port:~$ ";}
+function updatePrompt(){var p=document.querySelector(".inrow .prompt");var sym=document.getElementById("promptsym");var inp=document.getElementById("cmd");if(S.shell){if(p)p.textContent="";if(sym)sym.textContent=S.shell.cwd+" #";if(inp)inp.placeholder="commande dans le conteneur (exit pour ressortir)";}else{if(p)p.textContent="grutier@port";if(sym)sym.textContent=":~$";if(inp)inp.placeholder="tape une commande docker... (essaie: aide)";}}
+function shellSend(v){var low=v.toLowerCase();if(low==="exit"||low==="logout"){S.shell=null;updatePrompt();return;}if(low==="clear"){out.innerHTML="";return;}runInContainer(v);}
+function runInContainer(line){var t=tokenize(line);var cmd=t[0]||"";var c=S.containers.get(S.shell.name)||{};var vol=(c.volumes||[]).length>0;
+switch(cmd){
+case "ls":{var p=t[1]||S.shell.cwd;if(p==="."||p==="/app"||p==="/app/")print("node_modules  package.json  server.js","dim");else if(p==="/data"||p==="/data/")print(vol?"count.json":"(vide)","dim");else if(p==="/")print("app  bin  data  dev  etc  lib  proc  run  sbin  sys  tmp  usr  var","dim");else print("ls: "+p+": No such file or directory","err");break;}
+case "pwd":print(S.shell.cwd,"dim");break;
+case "whoami":print("root","dim");break;
+case "hostname":print(S.shell.name,"dim");break;
+case "env":case "printenv":{var e=c.env||{};print("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","dim");print("NODE_VERSION=22","dim");Object.keys(e).forEach(function(k){print(k+"="+e[k],"dim");});break;}
+case "cat":{var f=t[1]||"";var inData=(f==="/data/count.json")||(S.shell.cwd==="/data"&&f==="count.json");if(f==="package.json"||f==="/app/package.json"||f==="./package.json"){["{",'  "name": "mon-app-custom",','  "version": "1.0.0",','  "main": "server.js",','  "dependencies": { "express": "^4", "redis": "^4" }',"}"].forEach(function(l){print(l,"dim");});}else if(inData){vol?print('{"count":3}',"dim"):print("cat: "+f+": No such file or directory","err");}else if(f==="server.js"||f==="/app/server.js"){print("// app mon-app-custom (Node) : trop long pour l'afficher ici.","dim");}else print("cat: "+f+": No such file or directory","err");break;}
+case "cd":{var d=t[1]||"/app";var dd=d.replace(/\/$/,"")||"/";if(dd==="/data"&&!vol){print("sh: cd: can't cd to /data: No such file or directory","err");}else if(["/app","/data","/"].indexOf(dd)>=0){S.shell.cwd=dd;updatePrompt();}else print("sh: cd: can't cd to "+d,"err");break;}
+case "echo":print(t.slice(1).join(" "),"dim");break;
+case "node":if(t[1]==="-v"||t[1]==="--version")print("v22.13.0","dim");else print("(REPL Node non simulé)","dim");break;
+case "":break;
+default:print("sh: "+cmd+": not found","err");
+}}
+function send(line){
+  const v=line.trim();if(!v)return;const low=v.toLowerCase();
+  print(promptStr()+v,"cmd");
+  if(S.shell){shellSend(v);update();return;}
+  if(low==="aide"||low==="help"){["Tape des commandes docker : run, ps, ps -a, images, logs, exec, stop, rm, rmi,","build -t, pull, tag, push, login, network create/ls, volume create/ls, compose up/down/ps/logs.","Ici tout est simulé : aucune commande réelle n'est exécutée."].forEach(l=>print("  "+l,"dim"));return;}
+  if(low==="objectif"){print(cur<OBJ.length?OBJ[cur].goal:"Parcours terminé.","dim");return;}
+  if(low==="indice"){print(cur<OBJ.length?OBJ[cur].hint:"-","dim");return;}
+  if(low==="clear"){out.innerHTML="";return;}
+  if(low==="reset"){resetSim();return;}
+  execSim(v);update();
+}
+function resetSim(){S=freshState();fileDraft={};cur=0;updatePrompt();out.innerHTML="";print("== LE PORT DES CONTENEURS ==","ok");print("Tu es le gestionnaire du port. Ton métier : mettre les applications en service, leur ouvrir l'accès, les relier entre elles et les faire durer. Les bateaux qui accostent, ce sont les visiteurs qui viennent les utiliser.","dim");print('Tout est simulé ici : essaie sans rien risquer. Suis la feuille de route, et tape "aide" pour la liste des commandes.',"dim");renderSegs();renderBrief();update();}
+
+const input=document.getElementById("cmd");const history=[];let hi=-1;
+input.addEventListener("keydown",e=>{if(e.key==="Enter"){const v=input.value;if(v.trim()){history.push(v);hi=history.length;}send(v);input.value="";}else if(e.key==="ArrowUp"){if(hi>0){hi--;input.value=history[hi];e.preventDefault();}}else if(e.key==="ArrowDown"){if(hi<history.length-1){hi++;input.value=history[hi];}else{hi=history.length;input.value="";}}});
+document.body.addEventListener("click",e=>{if(e.target&&e.target.closest&&e.target.closest(".desk"))return;input.focus();});
+var deskFile="Dockerfile";
+(function initDesk(){var ed=document.getElementById("deskeditor");if(!ed)return;var tabs=document.querySelectorAll(".dtab");function load(){ed.value=fileDraft[deskFile]||"";}tabs.forEach(function(t){t.addEventListener("click",function(){deskFile=t.getAttribute("data-file");tabs.forEach(function(x){x.classList.toggle("on",x===t);});load();ed.focus();});});ed.addEventListener("input",function(){fileDraft[deskFile]=ed.value;});document.getElementById("desksave").addEventListener("click",function(){saveFile(deskFile);});load();})();
+resetSim();
+
+</script>
+</body>
+</html>

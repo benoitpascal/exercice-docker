@@ -2,7 +2,7 @@
 
 Bienvenue. Ce dépôt est un parcours d'apprentissage de Docker, du tout début
 jusqu'à la mise en ligne d'une image sur un registry. Tu vas prendre une petite
-application web déjà écrite (un compteur de visites) et apprendre, étape par
+application web déjà écrite (une petite application web) et apprendre, étape par
 étape, à la faire tourner dans des conteneurs.
 
 Tu n'as pas besoin de savoir coder. L'application est fournie complète, tu ne
@@ -28,6 +28,9 @@ touches pas à son code : tu apprends seulement à la conteneuriser.
   ce dossier dans ton espace de travail et tu travailles dessus.
 - `checks/` : des scripts qui te disent, mission par mission, si tu as atteint
   l'objectif. Tu les lances toi-même quand le carnet te le demande.
+- `cockpit/` : une interface visuelle optionnelle. Elle exécute tes vraies
+  commandes Docker et dessine ton port en direct. Mêmes exercices que le carnet,
+  mais avec un quai qui réagit. Voir `cockpit/README.md` pour la lancer.
 
 ## Première étape
 

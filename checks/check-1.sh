@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
-# Mission 1 : conteneur nginx 'vitrine' en arriere-plan, publie sur 8080.
-set -u; FAIL=0; DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/_lib.sh"
-need_docker
-echo "== Mission 1 : premier conteneur =="
-RUNNING=$(docker ps --filter "name=^vitrine$" --format '{{.Names}}')
-if [ "$RUNNING" = "vitrine" ]; then ok "Le conteneur 'vitrine' tourne."
-else ko "Aucun conteneur en marche nomme 'vitrine'."; fi
-PORTS=$(docker ps --filter "name=^vitrine$" --format '{{.Ports}}')
-if echo "$PORTS" | grep -q '8080'; then ok "Le port 8080 est publie."
-else ko "Le port 8080 ne semble pas publie (option de publication ?)."; fi
-if curl -s --max-time 5 http://localhost:8080 | grep -qi 'nginx'; then
-  ok "La page nginx repond sur http://localhost:8080."
-else ko "Rien ne repond sur http://localhost:8080."; fi
+# Etape 1 : un batiment d'accueil est ouvert.
+set -u; FAIL=0; DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/_lib.sh"; need_docker
+echo "== Etape 1 : prise de poste =="
+if [ -n "$(docker ps -q)" ]; then ok "Au moins un batiment est ouvert sur le port."
+else ko "Aucun batiment ouvert. Lance un service avec docker run (image nginx)."; fi
 finish

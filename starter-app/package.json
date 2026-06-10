@@ -1,5 +1,5 @@
 {
-  "name": "pixel-counter",
+  "name": "mon-app-custom",
   "version": "1.0.0",
   "private": true,
   "description": "Petite app web qui compte les visites, support de l'exercice Docker.",

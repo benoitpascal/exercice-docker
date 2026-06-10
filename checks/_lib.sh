@@ -12,7 +12,7 @@ need_docker() {
 finish() {
   echo
   if [ "${FAIL:-0}" -eq 0 ]; then
-    echo "${GREEN}Mission validee. Tu peux passer a la suite.${NC}"
+    echo "${GREEN}Etape validee. Tu peux passer a la suite.${NC}"
   else
     echo "${RED}Pas encore. Relis l'objectif et les indices de la mission.${NC}"
     exit 1
