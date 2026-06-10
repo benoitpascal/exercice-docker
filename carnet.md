@@ -103,13 +103,13 @@ Contrôle : `bash checks/check-1.sh`
 
 Ce qu'on attend de toi :
 
-- Rédiger les plans de ton bâtiment : un fichier `Dockerfile` à la racine de ton
+- Rédiger les plans de ton établissement : un fichier `Dockerfile` à la racine de ton
   chantier.
 - Construire ton image, nommée `mon-app-custom:1.0`.
-- Ouvrir ton bâtiment, nommé `app`, en arrière-plan.
+- Ouvrir ton établissement, nommé `app`, en arrière-plan.
 - Rédiger aussi un `.dockerignore` pour ne pas embarquer l'inutile dans le plan.
 
-Pour l'instant ton bâtiment tourne, mais aucun bateau ne peut encore l'atteindre :
+Pour l'instant ton établissement tourne, mais aucun bateau ne peut encore l'atteindre :
 on s'occupe du quai bientôt.
 
 La règle du jour : un **Dockerfile** décrit, étape par étape, comment fabriquer
@@ -162,7 +162,7 @@ Contrôle : `bash checks/check-3.sh`
 
 Ce qu'on attend de toi :
 
-- Ouvrir un quai sur ton bâtiment `app` : relier le numéro `3000` de ta
+- Ouvrir un quai sur ton établissement `app` : relier le numéro `3000` de ta
   machine au port `3000` du bâtiment. Comme un quai se fixe à l'ouverture du
   bâtiment, tu devras fermer et rouvrir `app` avec son quai.
 - Vérifier en allant voir `http://localhost:3000` : le total s'affiche et
@@ -255,7 +255,7 @@ Ce qu'on attend de toi :
 - Rouvrir `app` sur le même pont, et lui indiquer où trouver l'entrepôt via
   la variable `REDIS_HOST` (sa valeur, c'est le nom du bâtiment entrepôt).
 
-Quand c'est bon, ton bâtiment range désormais ses registres dans l'entrepôt
+Quand c'est bon, ton établissement range désormais ses registres dans l'entrepôt
 Redis, joignable par le pont.
 
 La règle du jour : sur un **pont** (réseau), un bâtiment en joint un autre par son
@@ -263,7 +263,7 @@ nom. Sans pont commun, aucune communication possible.
 
 Indices :
 
-- Trois temps : créer un pont (le mémo a une famille de commandes réseau), poser l'entrepôt dessus, puis rouvrir ton bâtiment sur le même pont.
+- Trois temps : créer un pont (le mémo a une famille de commandes réseau), poser l'entrepôt dessus, puis rouvrir ton établissement sur le même pont.
 - Sur un pont, un bâtiment en joint un autre par son nom : c'est cette valeur que tu donnes à `REDIS_HOST`.
 - Pour que l'entrepôt écrive ses données sur disque, on lui passe une commande de démarrage : `redis-server --appendonly yes` (le mémo montre comment ajouter une commande après le nom de l'image).
 - N'oublie pas de rouvrir `app` avec son quai 3000 ET la variable de connexion.
@@ -314,17 +314,18 @@ Ce qu'on attend de toi :
   la connexion (`REDIS_HOST`), le quai 3000.
 - D'abord, fais le ménage : évacue les bâtiments `app` et `cache` lancés à la
   main (sinon le quai 3000 est déjà pris).
-- Monter tout le quartier d'une seule commande, en arrière-plan.
+- Tout ouvrir d'une seule commande, en arrière-plan.
 
-La règle du jour : un **quartier** (Compose) décrit tout un ensemble dans un seul
-plan, et le monte ou le démonte d'un geste. C'est ainsi qu'on reproduit un port
-sans le reconstruire pièce par pièce.
+La règle du jour : un seul **plan d'ensemble** (`compose.yaml`) décrit toute
+l'installation, et l'ouvre ou la ferme d'un geste. C'est ainsi qu'on redresse le
+même port ailleurs, sans le remonter pièce par pièce. Sur la carte, l'ensemble
+apparaît regroupé en quartier.
 
 Indices :
 
-- Le quartier se décrit dans un fichier `compose.yaml` : chaque bâtiment devient un service, avec son plan ou son image, son quai, ses variables, son conteneur maritime. Le mémo liste les clés utiles.
+- Le plan d'ensemble se décrit dans un fichier `compose.yaml` : chaque bâtiment devient un service, avec son plan ou son image, son quai, ses variables, son conteneur maritime. Le mémo liste les clés utiles.
 - Un service qui se construit depuis ton Dockerfile n'utilise pas la même clé qu'un service qui part d'une image déjà prête.
-- Pense à libérer le quai 3000 avant de monter le quartier (évacue les bâtiments lancés à la main).
+- Pense à libérer le quai 3000 avant de tout ouvrir (évacue les bâtiments lancés à la main).
 - La commande de montage tient en deux mots, suivis d'une sous-commande qui monte tout en arrière-plan ; le mémo la donne.
 
 Contrôle : `bash checks/check-9.sh`
@@ -362,8 +363,7 @@ Contrôle : `bash checks/check-10.sh`
 Tu sais désormais lancer des services tout prêts, construire les tiens
 (images et Dockerfile), gérer leur cycle de vie, ouvrir des
 quais (ports), changer leurs enseignes (configuration), entreposer durablement
-(conteneurs maritimes), relier les bâtiments (ponts), monter un quartier entier
-d'un geste (Compose) et expédier tes plans (registry). C'est le métier au
+(conteneurs maritimes), relier les bâtiments (ponts), ouvrir tout un ensemble d'un seul plan (Compose) et expédier tes plans (registry). C'est le métier au
 quotidien.
 
 Pour aller plus loin : les contrôles de santé dans Compose, les images
