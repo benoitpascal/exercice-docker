@@ -15,10 +15,7 @@ sorte qu'elles tiennent dans le temps. Une application tourne à l'intérieur d'
 l'emploi, d'autres, tu les rédiges toi-même.
 
 L'autorité portuaire (ce carnet) t'apprend le métier sur le tas, au fil des
-arrivées. Tu ne lis pas un cours : tu réagis à des situations. À chaque étape, on te
-donne le contexte et la règle du port, puis on te laisse agir. Tu ne reçois jamais
-la commande toute faite : tu as l'objectif et des indices, à toi de trouver les bons
-gestes. Quand tu bloques :
+arrivées. Quand tu bloques :
 
 1. `memo-commandes.md` est ton manuel d'opérations (toutes les commandes et leurs
    options). Les outils sont là, à toi de choisir.
